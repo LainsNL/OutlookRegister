@@ -129,30 +129,44 @@ def Outlook_register(page, email, password):
         page.wait_for_event("request", lambda req: req.url.startswith("blob:https://iframe.hsprotect.net/"), timeout=22000)
         page.wait_for_timeout(800)
 
-        page.keyboard.press('Tab')
-        page.keyboard.press('Tab')
-        page.wait_for_timeout(100)
-
         for _ in range(0, max_captcha_retries + 1):
 
             page.keyboard.press('Enter')
-            page.wait_for_timeout(11000)
+            page.wait_for_timeout(11500)
             page.keyboard.press('Enter')
-            page.wait_for_event("request", lambda req: req.url.startswith("https://browser.events.data.microsoft.com"), timeout=40000)
 
             try:
-                page.wait_for_event("request", lambda req: req.url.startswith("blob:https://iframe.hsprotect.net/"), timeout=1700)
- 
-            except:
+                page.wait_for_event("request", lambda req: req.url.startswith("https://browser.events.data.microsoft.com"), timeout=8000)
+
                 try:
-                    page.get_by_text('一些异常活动').wait_for(timeout=1200)
-                    print("[Error: Rate limit] - 正常通过验证码，但当前IP注册频率过快。")
-                    return False
+
+                    page.wait_for_event("request", lambda req: req.url.startswith("https://collector-pxzc5j78di.hsprotect.net/assets/js/bundle"), timeout=1700) 
+                    page.wait_for_timeout(500)
+                    continue
 
                 except:
-                    pass
+                    try:
+
+                        page.get_by_text('一些异常活动').wait_for(timeout=1200)
+                        print("[Error: Rate limit] - 正常通过验证码，但当前IP注册频率过快。")
+                        return False
+
+                    except:
+                        break
+
+            except:
+                # raise TimeoutError
+                page.wait_for_timeout(5000)
+                page.keyboard.press('Enter')
+                page.wait_for_event("request", lambda req: req.url.startswith("https://browser.events.data.microsoft.com"), timeout=10000)
+
+                try:
+                    page.wait_for_event("request", lambda req: req.url.startswith("https://collector-pxzc5j78di.hsprotect.net/assets/js/bundle"), timeout=4000)
+
+                except:
+                    break
+
                 page.wait_for_timeout(500)
-                break
 
         else: 
             raise TimeoutError
@@ -160,8 +174,8 @@ def Outlook_register(page, email, password):
     except:
 
         print(f"[Error: IP] - 加载超时或因触发机器人检测导致按压次数达到最大仍未通过。")
-        return False  
-    
+        return False 
+
     filename = 'Results\\logged_email.txt' if enable_oauth2 else 'Results\\unlogged_email.txt'
     with open(filename, 'a', encoding='utf-8') as f:
         f.write(f"{email}@outlook.com: {password}\n")
@@ -171,9 +185,7 @@ def Outlook_register(page, email, password):
         return True
 
     try:
-        page.locator('[data-testid="secondaryButton"]').click(timeout=20000) 
-        button = page.locator('[data-testid="secondaryButton"]')
-        button.wait_for(timeout=5000)
+        page.get_by_text('取消').click(timeout=20000)
 
     except:
 
@@ -182,29 +194,19 @@ def Outlook_register(page, email, password):
 
     try:
 
-        page.wait_for_timeout(random.randint(1600,2000))
-        button.click(timeout=6000)
-        button = page.locator('[data-testid="secondaryButton"]')
-        button.wait_for(timeout=5000)
-        page.wait_for_timeout(random.randint(1600,2000))
-        button.click(timeout=6000)
-        button = page.locator('[data-testid="secondaryButton"]')
-        button.wait_for(timeout=5000)
-        page.wait_for_timeout(3000)
-        button.click(timeout=6000)
+        try:
+            # 这个不确定是不是一定出现
+            page.get_by_text('无法创建通行密钥').wait_for(timeout=15000)
+            page.get_by_text('取消').click(timeout=3000)
 
-    except:
-        pass
+        except:
+            pass
 
-    try:
-
-        page.wait_for_timeout(3200)
-        if page.get_by_text("保持登录状态?").count() > 0:
-            page.get_by_text('否').click(timeout=12000)
-        page.locator('.splitPrimaryButton[aria-label="新邮件"]').wait_for(timeout=26000)
+        page.locator('[aria-label="新邮件"]').wait_for(timeout=26000)
         return True
 
     except:
+
         print(f'[Error: Timeout] - 邮箱未初始化，无法正常收件。')
         return False
 
