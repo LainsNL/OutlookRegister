@@ -1,9 +1,9 @@
 {
     "browser_path": "",
     "proxy": "http://127.0.0.1:7897",
-    "Bot_protection_wait": 15,
-    "max_captcha_retries": 1,
-    "concurrent_flows": 2,
+    "Bot_protection_wait": 12,
+    "max_captcha_retries": 2,
+    "concurrent_flows": 5,
     "max_tasks": 50,
     "enable_oauth2": false,
     "client_id": "",
@@ -14,5 +14,5 @@
         "https://graph.microsoft.com/Mail.Send",
         "https://graph.microsoft.com/User.Read"
     ],
-    "info": "建议选用指纹浏览器，最好能过https://www.browserscan.net。如果enable_oauth2为false，则最后三个参数可选。其他情况下，必须填写所有参数。"
+    "info": "指纹浏览器要能过https://www.browserscan.net，否则请使用patchright。如果enable_oauth2为false，则最后三个参数可选。如果使用patchright，第一个参数可留空。其他情况下，必须填写所有参数。"
 }

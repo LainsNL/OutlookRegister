@@ -1,3 +1,4 @@
 faker
 requests
-playwright
+playwright>=1.52.5
+patchright>=1.52.5

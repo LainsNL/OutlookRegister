@@ -6,8 +6,9 @@ import string
 import secrets
 from faker import Faker
 from get_token import get_access_token
-from playwright.sync_api import sync_playwright
+from patchright.sync_api import sync_playwright
 from concurrent.futures import ThreadPoolExecutor
+
 
 def generate_strong_password(length=16):
 
@@ -39,15 +40,14 @@ def OpenBrowser():
     try:
         p = sync_playwright().start()
         browser = p.chromium.launch(
-            executable_path=browser_path,
-            headless=False,
+            headless=False,            
             args=[
                 '--lang=zh-CN'
             ],
             proxy={
                 "server": proxy,
                 "bypass": "localhost",
-            },
+            }
         ) 
         return browser,p
 
@@ -69,14 +69,14 @@ def Outlook_register(page, email, password):
         page.goto("https://outlook.live.com/mail/0/?prompt=create_account", timeout=20000, wait_until="domcontentloaded")
         page.get_by_text('同意并继续').wait_for(timeout=30000)
         start_time = time.time()
-        page.wait_for_timeout(0.04 * bot_protection_wait)
+        page.wait_for_timeout(0.1 * bot_protection_wait)
         page.get_by_text('同意并继续').click(timeout=30000)
 
     except: 
 
         print("[Error: IP] - IP质量不佳，无法进入注册界面。 ")
         return False
-    
+
     try:
 
         page.locator('[aria-label="新建电子邮件"]').type(email,delay=0.006 * bot_protection_wait,timeout=10000)
@@ -127,45 +127,32 @@ def Outlook_register(page, email, password):
             print("[Error: FunCaptcha] - 验证码类型错误，非按压验证码。 ")
             return False
 
-        page.wait_for_event("request", lambda req: req.url.startswith("blob:https://iframe.hsprotect.net/"), timeout=22000)
-        page.wait_for_timeout(800)
+        frame1 = page.frame_locator('iframe[title="验证质询"]')
+        frame2 = frame1.frame_locator('iframe[style*="display: block"]')
 
         for _ in range(0, max_captcha_retries + 1):
 
-            page.keyboard.press('Enter')
-            page.wait_for_timeout(11500)
-            page.keyboard.press('Enter')
+            frame2.locator('[stroke="transparent"]').click(timeout=15000)
+            frame2.locator('[aria-label="再次按下"]').click(timeout=30000)
 
             try:
-                page.wait_for_event("request", lambda req: req.url.startswith("https://browser.events.data.microsoft.com"), timeout=8000)
+                page.locator('.draw').wait_for(state="detached")
 
                 try:
 
-                    page.wait_for_event("request", lambda req: req.url.startswith("https://collector-pxzc5j78di.hsprotect.net/assets/js/bundle"), timeout=1700) 
-                    page.wait_for_timeout(2000)
-                    continue
-
-                except:
- 
+                    page.locator('[role="status"][aria-label="正在加载..."]').wait_for(timeout=5000)
+                    page.wait_for_timeout(8000)
                     if page.get_by_text('一些异常活动').count() or page.get_by_text('此站点正在维护，暂时无法使用，请稍后重试。').count() > 0:
                         print("[Error: Rate limit] - 正常通过验证码，但当前IP注册频率过快。")
                         return False
-                    
                     break
-
-            except:
-                # raise TimeoutError
-                page.wait_for_timeout(5000)
-                page.keyboard.press('Enter')
-                page.wait_for_event("request", lambda req: req.url.startswith("https://browser.events.data.microsoft.com"), timeout=10000)
-
-                try:
-                    page.wait_for_event("request", lambda req: req.url.startswith("https://collector-pxzc5j78di.hsprotect.net/assets/js/bundle"), timeout=4000)
 
                 except:
-                    break
+                    frame1.get_by_text("请再试一次").wait_for(timeout=15000)
+                    continue
 
-                page.wait_for_timeout(500)
+            except:
+                raise TimeoutError
 
         else: 
             raise TimeoutError
@@ -196,7 +183,7 @@ def Outlook_register(page, email, password):
         try:
             # 这个不确定是不是一定出现
             page.get_by_text('无法创建通行密钥').wait_for(timeout=25000)
-            page.get_by_text('取消').click(timeout=3000)
+            page.get_by_text('取消').click(timeout=7000)
 
         except:
             pass
@@ -281,7 +268,7 @@ def main(concurrent_flows=10, max_tasks=1000):
 
 if __name__ == '__main__':
 
-
+    
     with open('config.json', 'r', encoding='utf-8') as f:
         data = json.load(f) 
 
@@ -294,6 +281,5 @@ if __name__ == '__main__':
     enable_oauth2 = data['enable_oauth2']
     concurrent_flows = data["concurrent_flows"]
     max_tasks = data["max_tasks"]
-
 
     main(concurrent_flows, max_tasks)
