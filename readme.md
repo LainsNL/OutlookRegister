@@ -7,7 +7,7 @@ Outlook 注册机
 - 自动过验证码  
 - 注册成功  
 
-设置相关：
+设置相关：  
 1.如果使用`OutlookRegister.py`(playwright)，则需要自行寻找指纹浏览器并填写绝对路径到`browser_path`。  
 2.如果使用`OutlookRegister_patchright.py`(patchright)，`browser_path`可以留空。  
 3.`Bot_protection_wait`单位为秒,可填0。  
