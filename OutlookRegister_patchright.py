@@ -148,6 +148,9 @@ def Outlook_register(page, email, password):
                     break
 
                 except:
+
+                    if page.get_by_text('取消').count() > 0:
+                        break
                     frame1.get_by_text("请再试一次").wait_for(timeout=15000)
                     continue
 
@@ -158,7 +161,6 @@ def Outlook_register(page, email, password):
             raise TimeoutError
 
     except:
-
         print(f"[Error: IP] - 加载超时或因触发机器人检测导致按压次数达到最大仍未通过。")
         return False 
 
@@ -174,7 +176,6 @@ def Outlook_register(page, email, password):
         page.get_by_text('取消').click(timeout=20000)
 
     except:
-
         print(f"[Error: Timeout] - 无法找到按钮。")
         return False   
 
@@ -206,13 +207,13 @@ def process_single_flow():
         email =  random_email(random.randint(12, 14))
         password = generate_strong_password(random.randint(11, 15))
         result = Outlook_register(page, email, password)
-        if result and not enable_oauth2:
 
+        if result and not enable_oauth2:
             return True
-        
+
         elif not result:
             return False
-        
+
         token_result = get_access_token(page, email)
         if token_result[0]:
             refresh_token, access_token, expire_at =  token_result
@@ -268,13 +269,11 @@ def main(concurrent_flows=10, max_tasks=1000):
 
 if __name__ == '__main__':
 
-    
     with open('config.json', 'r', encoding='utf-8') as f:
         data = json.load(f) 
 
     os.makedirs("Results", exist_ok=True)
 
-    browser_path = data['browser_path']
     bot_protection_wait = data['Bot_protection_wait'] * 1000
     max_captcha_retries = data['max_captcha_retries']
     proxy = data['proxy']

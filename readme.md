@@ -1,7 +1,7 @@
 # OutlookRegister  
 
 Outlook 注册机  
-不保证可用性，自行测试。 
+选择器经常更新，不保证时效性，自行测试。 
 
 - 模拟人类填表操作  
 - 自动过验证码  
@@ -10,7 +10,7 @@ Outlook 注册机
 设置相关：  
 1.如果使用`OutlookRegister.py`(playwright)，则需要自行寻找指纹浏览器并填写绝对路径到`browser_path`。  
 2.如果使用`OutlookRegister_patchright.py`(patchright)，`browser_path`可以留空。  
-3.`Bot_protection_wait`单位为秒,可填0。  
+3.`Bot_protection_wait`单位为秒，可填0。  
 4.`client_id`与`redirect_url`可以前往[Azure](https://azure.microsoft.com/zh-cn?OCID=cmmyhidqdn5_brandzone__EFID__)注册获取，不需要Oauth2可留空。  
 5.`client_id`与`redirect_url`格式通常类似于`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`和`http://localhost:8000`。  
 6.`Scopes`按照申请的权限填，不需要Oauth2可留空。  
