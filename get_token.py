@@ -28,17 +28,15 @@ def generate_code_challenge(code_verifier):
     sha256_hash = hashlib.sha256(code_verifier.encode()).digest()
     return base64.urlsafe_b64encode(sha256_hash).decode().rstrip('=')
 
-def handle_oauth2_form(page,email):
+async def handle_oauth2_form(page, email):
     try:
-
-        page.locator('[name="loginfmt"]').fill(f'{email}@outlook.com',timeout=20000)
-        page.locator('#idSIButton9').click(timeout=7000)
-        page.locator('[data-testid="appConsentPrimaryButton"]').click(timeout=20000)
-
+        await page.locator('[name="loginfmt"]').fill(f'{email}@outlook.com', timeout=20000)
+        await page.locator('#idSIButton9').click(timeout=7000)
+        await page.locator('[data-testid="appConsentPrimaryButton"]').click(timeout=20000)
     except:
         pass
 
-def get_access_token(page, email):
+async def get_access_token(page, email):
 
     with open('config.json', 'r', encoding='utf-8') as f:
         data = json.load(f) 
@@ -66,9 +64,9 @@ def get_access_token(page, email):
 
         try:
 
-            page.wait_for_timeout(250)
+            await page.wait_for_timeout(250)
             url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{'&'.join(f'{k}={quote(v)}' for k,v in params.items())}"
-            page.goto(url)
+            await page.goto(url)
 
             break
 
@@ -78,11 +76,11 @@ def get_access_token(page, email):
                     return False, False, False
                 continue
 
-    with page.expect_response(lambda response: redirect_url in response.url,timeout=50000) as response_info:
+    async with page.expect_response(lambda response: redirect_url in response.url, timeout=50000) as response_info:
 
-        handle_oauth2_form(page, email)
+        await handle_oauth2_form(page, email)
 
-        response = response_info.value
+        response = await response_info.value
         callback_url = response.url
 
         if 'code=' not in callback_url:
@@ -100,6 +98,9 @@ def get_access_token(page, email):
         'scope': ' '.join(SCOPES)
     }
 
+    # requests is sync, we can keep it sync or use httpx. 
+    # Since we are in an async function, we can use requests in a thread if we want, 
+    # but for simplicity we'll just keep it sync for now as it doesn't block much.
     response = requests.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', data=token_data, headers={
         'Content-Type': 'application/x-www-form-urlencoded'
     }, proxies=get_proxy())

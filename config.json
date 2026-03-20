@@ -1,6 +1,6 @@
 {
     "browser_path": "",
-    "proxy": "http://127.0.0.1:7897",
+    "proxy": "",
     "Bot_protection_wait": 12,
     "max_captcha_retries": 2,
     "concurrent_flows": 5,
