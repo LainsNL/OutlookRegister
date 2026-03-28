@@ -4,7 +4,7 @@
     "Bot_protection_wait": 12,
     "max_captcha_retries": 2,
     "concurrent_flows": 5,
-    "max_tasks": 50,
+    "max_tasks": 5,
     "enable_oauth2": false,
     "client_id": "",
     "redirect_url": "",

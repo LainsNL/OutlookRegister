@@ -4,11 +4,17 @@ import json
 import random
 import string
 import secrets
+import threading
 from faker import Faker
 from get_token import get_access_token
 from patchright.sync_api import sync_playwright
 from concurrent.futures import ThreadPoolExecutor
 
+# 创建线程本地存储，用于保存每个线程自己的 Playwright 和 Browser 实例
+thread_local = threading.local()
+cleanup_lock = threading.Lock()
+active_browsers = []
+active_playwrights = []
 
 def generate_strong_password(length=16):
 
@@ -36,23 +42,35 @@ def random_email(length):
 
     return first_char + ''.join(other_chars)
 
-def OpenBrowser():
-    try:
-        p = sync_playwright().start()
-        browser = p.chromium.launch(
-            headless=False,            
-            args=[
-                '--lang=zh-CN'
-            ],
-            proxy={
+def get_thread_browser():
+    """
+    获取当前线程专属的浏览器实例。
+    """
+    if not hasattr(thread_local, "playwright"):
+        try:
+            p = sync_playwright().start()
+
+            proxy_settings = {
                 "server": proxy,
                 "bypass": "localhost",
-            }
-        ) 
-        return browser,p
-
-    except Exception as e:
-        print(e)
+            } if proxy else None
+            b = p.chromium.launch(
+                headless=False,            
+                args=['--lang=zh-CN'],
+                proxy=proxy_settings
+            )
+            thread_local.playwright = p
+            thread_local.browser = b
+            
+            # 把创建出来的实例保存到全局列表中，方便最后统一关闭
+            with cleanup_lock:
+                active_browsers.append(b)
+                active_playwrights.append(p)
+                
+        except Exception as e:
+            print(f"启动浏览器失败: {e}")
+            return None
+    return thread_local.browser
 
 def Outlook_register(page, email, password):
 
@@ -132,7 +150,7 @@ def Outlook_register(page, email, password):
 
         for _ in range(0, max_captcha_retries + 1):
 
-            frame2.locator('[stroke="transparent"]').click(timeout=15000)
+            frame2.locator('[aria-label="可访问性挑战"]').click(timeout=15000)
             frame2.locator('[aria-label="再次按下"]').click(timeout=30000)
 
             try:
@@ -140,11 +158,14 @@ def Outlook_register(page, email, password):
 
                 try:
 
+                    # 简单的认为加载8秒后成功，暂不考虑请求.
                     page.locator('[role="status"][aria-label="正在加载..."]').wait_for(timeout=5000)
                     page.wait_for_timeout(8000)
                     if page.get_by_text('一些异常活动').count() or page.get_by_text('此站点正在维护，暂时无法使用，请稍后重试。').count() > 0:
                         print("[Error: Rate limit] - 正常通过验证码，但当前IP注册频率过快。")
                         return False
+                    elif frame2.locator('[aria-label="可访问性挑战"]').count() > 0:
+                        continue
                     break
 
                 except:
@@ -198,19 +219,23 @@ def Outlook_register(page, email, password):
         return False
 
 def process_single_flow():
-
+    context = None
     try:
-        browser = None
-        browser, p = OpenBrowser()
-        page = browser.new_page()
+        browser = get_thread_browser()
+        if not browser:
+            return False
+
+        # 创建独立的上下文
+        context = browser.new_context()
+        page = context.new_page()
 
         email =  random_email(random.randint(12, 14))
         password = generate_strong_password(random.randint(11, 15))
+        
         result = Outlook_register(page, email, password)
 
         if result and not enable_oauth2:
             return True
-
         elif not result:
             return False
 
@@ -218,7 +243,7 @@ def process_single_flow():
         if token_result[0]:
             refresh_token, access_token, expire_at =  token_result
             with open(r'Results\outlook_token.txt', 'a') as f2:
-                f2.write(email + "@outlook.com---" + password + "---" + refresh_token + "---" + access_token  + "---" + str(expire_at) + "\n") 
+                f2.write(f"{email}@outlook.com---{password}---{refresh_token}---{access_token}---{expire_at}\n") 
             print(f'[Success: TokenAuth] - {email}@outlook.com')
             return True
         else:
@@ -228,11 +253,11 @@ def process_single_flow():
         return False
     
     finally:
-        browser.close()
-        p.stop()
+        # 任务结束只关闭 context，不关闭 browser
+        if context:
+            context.close()
 
 def main(concurrent_flows=10, max_tasks=1000):
-
     task_counter = 0  
     succeeded_tasks = 0 
     failed_tasks = 0 
@@ -250,7 +275,6 @@ def main(concurrent_flows=10, max_tasks=1000):
                         succeeded_tasks += 1
                     else:
                         failed_tasks += 1
-
                 except Exception as e:
                     failed_tasks += 1
                     print(e)
@@ -266,6 +290,17 @@ def main(concurrent_flows=10, max_tasks=1000):
             time.sleep(0.5)
 
         print(f"[Info: Result] - 共 {max_tasks} 个，成功 {succeeded_tasks}，失败 {failed_tasks}")
+        
+    for b in active_browsers:
+        try:
+            b.close()
+        except:
+            pass
+    for p in active_playwrights:
+        try:
+            p.stop()
+        except:
+            pass
 
 if __name__ == '__main__':
 
