@@ -24,5 +24,5 @@ Outlook 注册机
 6.`python OutlookRegister_patchright.py`或者`python OutlookRegister.py`。  
 
 注意事项：  
-**IP**与成功率高度正相关，同一IP短时间不宜多次注册。单IP一次五个并发跑一轮短时间基本就不再能使用了. 
+**IP**与成功率高度正相关，同一IP短时间不宜多次注册。单IP一次五个并发跑一轮短时间基本就不再能使用了.  
 邮箱自动存储到工作目录的`Results`下。  

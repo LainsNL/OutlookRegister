@@ -10,6 +10,12 @@ from get_token import get_access_token
 from patchright.sync_api import sync_playwright
 from concurrent.futures import ThreadPoolExecutor
 
+# --- 不确定有无帮助 ---
+# 1. CDP 检测：wait_for_timeout --> time.sleep()
+# 2. 使用 launch_persistent_context 
+# 3. 避免短时间访问
+# 4. 模拟真人轨迹
+
 # 创建线程本地存储，用于保存每个线程自己的 Playwright 和 Browser 实例
 thread_local = threading.local()
 cleanup_lock = threading.Lock()
