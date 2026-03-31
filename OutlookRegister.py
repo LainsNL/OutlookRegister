@@ -1,13 +1,25 @@
-import os
 import time
 import json
 import random
 import string
 import secrets
+from pathlib import Path
 from faker import Faker
 from get_token import get_access_token
 from playwright.sync_api import sync_playwright
 from concurrent.futures import ThreadPoolExecutor
+
+RESULTS_DIR = Path("Results")
+
+def append_result_line(filename, line):
+    target = RESULTS_DIR / filename
+    with target.open('a', encoding='utf-8') as handle:
+        handle.write(line)
+
+
+def get_remaining_wait_ms(start_time):
+    elapsed_ms = (time.time() - start_time) * 1000
+    return max(0, bot_protection_wait - elapsed_ms)
 
 def generate_strong_password(length=16):
 
@@ -38,21 +50,24 @@ def random_email(length):
 def OpenBrowser():
     try:
         p = sync_playwright().start()
-        browser = p.chromium.launch(
-            executable_path=browser_path,
-            headless=False,
-            args=[
-                '--lang=zh-CN'
-            ],
-            proxy={
+        launch_kwargs = {
+            "headless": False,
+            "args": ['--lang=zh-CN'],
+        }
+        if browser_path:
+            launch_kwargs["executable_path"] = browser_path
+        if proxy:
+            launch_kwargs["proxy"] = {
                 "server": proxy,
                 "bypass": "localhost",
-            },
-        ) 
-        return browser,p
+            }
+
+        browser = p.chromium.launch(**launch_kwargs)
+        return browser, p
 
     except Exception as e:
-        print(e)
+        print(f"启动浏览器失败: {type(e).__name__}: {e}")
+        return None, None
 
 def Outlook_register(page, email, password):
 
@@ -112,7 +127,7 @@ def Outlook_register(page, email, password):
         page.locator('#firstNameInput').fill(firstname,timeout=10000)
 
         if time.time() - start_time < bot_protection_wait / 1000:
-            page.wait_for_timeout(bot_protection_wait - (time.time() + start_time) * 1000)
+            page.wait_for_timeout(get_remaining_wait_ms(start_time))
         
         page.locator('[data-testid="primaryButton"]').click(timeout=5000)
         page.locator('span > [href="https://go.microsoft.com/fwlink/?LinkID=521839"]').wait_for(state='detached',timeout=22000)
@@ -175,9 +190,8 @@ def Outlook_register(page, email, password):
         print(f"[Error: IP] - 加载超时或因触发机器人检测导致按压次数达到最大仍未通过。")
         return False 
 
-    filename = 'Results\\logged_email.txt' if enable_oauth2 else 'Results\\unlogged_email.txt'
-    with open(filename, 'a', encoding='utf-8') as f:
-        f.write(f"{email}@outlook.com: {password}\n")
+    filename = 'logged_email.txt' if enable_oauth2 else 'unlogged_email.txt'
+    append_result_line(filename, f"{email}@outlook.com: {password}\n")
     print(f'[Success: Email Registration] - {email}@outlook.com: {password}')
 
     if not enable_oauth2:
@@ -211,9 +225,13 @@ def Outlook_register(page, email, password):
 
 def process_single_flow():
 
+    browser = None
+    p = None
     try:
-        browser = None
         browser, p = OpenBrowser()
+        if not browser or not p:
+            return False
+
         page = browser.new_page()
 
         email =  random_email(random.randint(12, 14))
@@ -226,22 +244,27 @@ def process_single_flow():
         elif not result:
             return False
         
-        token_result = get_access_token(page, email)
+        token_result = get_access_token(page, email, proxy)
         if token_result[0]:
             refresh_token, access_token, expire_at =  token_result
-            with open(r'Results\outlook_token.txt', 'a') as f2:
-                f2.write(email + "@outlook.com---" + password + "---" + refresh_token + "---" + access_token  + "---" + str(expire_at) + "\n") 
+            append_result_line(
+                "outlook_token.txt",
+                email + "@outlook.com---" + password + "---" + refresh_token + "---" + access_token  + "---" + str(expire_at) + "\n",
+            )
             print(f'[Success: TokenAuth] - {email}@outlook.com')
             return True
         else:
             return False
 
-    except:
+    except Exception as exc:
+        print(f"单任务执行失败: {type(exc).__name__}: {exc}")
         return False
     
     finally:
-        browser.close()
-        p.stop()
+        if browser is not None:
+            browser.close()
+        if p is not None:
+            p.stop()
 
 def main(concurrent_flows=10, max_tasks=1000):
 
@@ -285,7 +308,7 @@ if __name__ == '__main__':
     with open('config.json', 'r', encoding='utf-8') as f:
         data = json.load(f) 
 
-    os.makedirs("Results", exist_ok=True)
+    RESULTS_DIR.mkdir(exist_ok=True)
 
     browser_path = data['browser_path']
     bot_protection_wait = data['Bot_protection_wait'] * 1000
