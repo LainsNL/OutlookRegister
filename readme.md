@@ -8,8 +8,8 @@ Outlook 注册机
 - 注册成功  
 
 设置相关：  
-1.如果使用`OutlookRegister.py`(playwright)，则需要自行寻找指纹浏览器并填写绝对路径到`browser_path`。  
-2.如果使用`OutlookRegister_patchright.py`(patchright)，`browser_path`可以留空。  
+1.playwright使用性较差,如果使用playwright，则需要自行寻找指纹浏览器并填写绝对路径。  
+2.如果使用patchright,且不需要Oauth2，则只需要更改代理地址.  
 3.`Bot_protection_wait`单位为秒，可填0。  
 4.`client_id`与`redirect_url`可以前往[Azure](https://azure.microsoft.com/zh-cn?OCID=cmmyhidqdn5_brandzone__EFID__)注册获取，不需要Oauth2可留空。  
 5.`client_id`与`redirect_url`格式通常类似于`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`和`http://localhost:8000`。  
@@ -21,7 +21,7 @@ Outlook 注册机
 3.如果你需要Oauth2，请在`config.json`中修改`"enable_oauth2"`的值为`true`并填写`Scopes`、`client_id`与`redirect_url`。  
 4.安装相关依赖`pip install -r requirements.txt`，如果未安装相关浏览器，使用`playwright install chromium`。  
 5.视运行脚本填写或留空`browser_path`。  
-6.`python OutlookRegister_patchright.py`或者`python OutlookRegister.py`。  
+6.`python main.py`。  
 
 注意事项：  
 **IP**与成功率高度正相关，同一IP短时间不宜多次注册。单IP一次五个并发跑一轮短时间基本就不再能使用了.  

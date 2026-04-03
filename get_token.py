@@ -42,9 +42,9 @@ def get_access_token(page, email):
 
     with open('config.json', 'r', encoding='utf-8') as f:
         data = json.load(f) 
-    SCOPES = data['Scopes']
-    client_id = data['client_id']
-    redirect_url = data['redirect_url']
+    SCOPES = data['oauth2']['Scopes']
+    client_id = data['oauth2']['client_id']
+    redirect_url = data['oauth2']['redirect_url']
 
     code_verifier = generate_code_verifier()  
     code_challenge = generate_code_challenge(code_verifier) 
