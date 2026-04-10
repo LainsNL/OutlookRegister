@@ -59,27 +59,26 @@ def get_access_token(page, email):
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256'
     }
+    max_time = 2 
+    current_times = 0
+    while current_times < max_time:
 
+        try:
+
+            page.wait_for_timeout(250)
+            url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{'&'.join(f'{k}={quote(v)}' for k,v in params.items())}"
+            page.goto(url)
+
+            break
+
+        except:
+                current_times = current_times + 1 
+                if current_times == max_time:
+                    return False, False, False
+                continue
+        
     with page.expect_response(lambda response: redirect_url in response.url,timeout=50000) as response_info:
 
-        max_time = 2 
-        current_times = 0
-        while current_times < max_time:
-
-            try:
-
-                page.wait_for_timeout(250)
-                url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{'&'.join(f'{k}={quote(v)}' for k,v in params.items())}"
-                page.goto(url)
-
-                break
-
-            except:
-                    current_times = current_times + 1 
-                    if current_times == max_time:
-                        return False, False, False
-                    continue
-            
         handle_oauth2_form(page, email)
 
         response = response_info.value

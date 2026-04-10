@@ -1,4 +1,4 @@
 faker
 requests
 playwright==1.53.0
-patchright==1.52.5
+patchright

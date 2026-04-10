@@ -85,7 +85,7 @@ class BaseBrowserController(ABC):
         day = str(random.randint(1, 28))
 
         try:
-
+            
             page.goto("https://outlook.live.com/mail/0/?prompt=create_account", timeout=20000, wait_until="domcontentloaded")
             page.get_by_text('同意并继续').wait_for(timeout=30000)
             start_time = time.time()
@@ -96,7 +96,7 @@ class BaseBrowserController(ABC):
 
             print("[Error: IP] - IP质量不佳，无法进入注册界面。 ")
             return False
-        
+
         try:
 
             page.locator('[aria-label="新建电子邮件"]').type(email,delay=0.006 * self.wait_time,timeout=10000)
@@ -134,6 +134,7 @@ class BaseBrowserController(ABC):
             if time.time() - start_time < self.wait_time / 1000:
                 page.wait_for_timeout(self.wait_time - (time.time() - start_time) * 1000)
             
+            
             page.locator('[data-testid="primaryButton"]').click(timeout=5000)
             page.locator('span > [href="https://go.microsoft.com/fwlink/?LinkID=521839"]').wait_for(state='detached',timeout=22000)
 
@@ -154,7 +155,6 @@ class BaseBrowserController(ABC):
                 raise TimeoutError
 
         except Exception as e:
-            print(e)
             print(f"[Error: IP] - 加载超时或因触发机器人检测导致按压次数达到最大仍未通过。")
             return False 
         
@@ -167,7 +167,9 @@ class BaseBrowserController(ABC):
             return True
         
         try:
-            page.get_by_text('取消').click(timeout=20000)
+            pass
+            # 该按钮似乎被删除.
+            # page.get_by_text('取消').click(timeout=20000)
 
         except:
             print(f"[Error: Timeout] - 无法找到按钮。")
@@ -176,14 +178,15 @@ class BaseBrowserController(ABC):
         try:
 
             try:
-                # 这个不确定是不是一定出现
-                page.get_by_text('无法创建通行密钥').wait_for(timeout=25000)
-                page.get_by_text('取消').click(timeout=7000)
+                pass
+                # 该按钮似乎被删除.
+                #page.get_by_text('无法创建通行密钥').wait_for(timeout=25000)
+                #page.get_by_text('取消').click(timeout=7000)
 
             except:
                 pass
 
-            page.locator('[aria-label="新邮件"]').wait_for(timeout=26000)
+            page.locator('[aria-label="新邮件"]').wait_for(timeout=32000)
             return True
 
         except:
