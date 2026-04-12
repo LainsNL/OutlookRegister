@@ -3,7 +3,6 @@ from playwright.sync_api import sync_playwright
 from .base_controller import BaseBrowserController
 
 
-
 class PlaywrightController(BaseBrowserController):
 
     def __init__(self):

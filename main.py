@@ -1,6 +1,6 @@
+import os
 import time
 import json
-import os
 from concurrent.futures import ThreadPoolExecutor
 from get_token import get_access_token
 from controllers.patchright_controller import PatchrightController
@@ -34,7 +34,7 @@ def process_single_flow(controller):
         token_result = get_access_token(page, email)
         if token_result[0]:
             refresh_token, access_token, expire_at =  token_result
-            with open(r'Results\outlook_token.txt', 'a') as f2:
+            with open(os.path.join(os.path.dirname(__file__), 'Results', 'outlook_token.txt'), 'a', encoding='utf-8') as f2:
                 f2.write(f"{email}@outlook.com---{password}---{refresh_token}---{access_token}---{expire_at}\n") 
             print(f'[Success: TokenAuth] - {email}@outlook.com')
             return True

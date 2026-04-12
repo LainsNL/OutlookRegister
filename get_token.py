@@ -1,23 +1,18 @@
 import json
 import base64
-import random
 import string
-import winreg
 import hashlib
 import secrets
 import requests
 from datetime import datetime
+from urllib.request import getproxies
 from urllib.parse import quote, parse_qs
 
 def get_proxy():
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Internet Settings") as key:
-            proxy_enable, _ = winreg.QueryValueEx(key, "ProxyEnable")
-            proxy_server, _ = winreg.QueryValueEx(key, "ProxyServer")
-            if proxy_enable and proxy_server:
-                return {"http": f"http://{proxy_server}", "https": f"http://{proxy_server}"}
-    except WindowsError:
-        pass
+    proxies = getproxies()
+    http_proxy = proxies.get('http') or proxies.get('https')
+    if http_proxy:
+        return {"http": http_proxy, "https": http_proxy}
     return {"http": None, "https": None}
 
 def generate_code_verifier(length=128):
@@ -28,94 +23,103 @@ def generate_code_challenge(code_verifier):
     sha256_hash = hashlib.sha256(code_verifier.encode()).digest()
     return base64.urlsafe_b64encode(sha256_hash).decode().rstrip('=')
 
-def handle_oauth2_form(page,email):
+def handle_oauth2_form(page, email):
     try:
-
-        page.locator('[name="loginfmt"]').fill(f'{email}@outlook.com',timeout=20000)
+        page.locator('[name="loginfmt"]').fill(f'{email}@outlook.com', timeout=20000)
         page.locator('#idSIButton9').click(timeout=7000)
-        page.locator('[data-testid="appConsentPrimaryButton"]').click(timeout=20000)
 
+        consent_btn = page.locator('[data-testid="appConsentPrimaryButton"]')
+        consent_btn.wait_for(state='visible', timeout=20000)
+        consent_btn.click(timeout=10000)
     except:
         pass
 
-def get_access_token(page, email):
+def get_access_token(page, email, max_retries=3):
+    for attempt in range(max_retries):
+        result = _try_get_access_token(page, email)
+        if result[0] is not False:
+            return result
+    return False, False, False
 
+def _try_get_access_token(page, email):
     with open('config.json', 'r', encoding='utf-8') as f:
-        data = json.load(f) 
+        data = json.load(f)
     SCOPES = data['oauth2']['Scopes']
     client_id = data['oauth2']['client_id']
     redirect_url = data['oauth2']['redirect_url']
 
-    code_verifier = generate_code_verifier()  
-    code_challenge = generate_code_challenge(code_verifier) 
-    scope = ' '.join(SCOPES)
+    code_verifier = generate_code_verifier()
+    code_challenge = generate_code_challenge(code_verifier)
     params = {
         'client_id': client_id,
         'response_type': 'code',
         'redirect_uri': redirect_url,
-        'scope': scope,
+        'scope': ' '.join(SCOPES),
         'response_mode': 'query',
         'prompt': 'select_account',
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256'
     }
-    max_time = 2 
-    current_times = 0
-    while current_times < max_time:
 
-        try:
+    authorize_url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{'&'.join(f'{k}={quote(v)}' for k, v in params.items())}"
 
-            page.wait_for_timeout(250)
-            url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{'&'.join(f'{k}={quote(v)}' for k,v in params.items())}"
-            page.goto(url)
+    try:
+        page.wait_for_timeout(250)
+        page.goto(authorize_url, timeout=30000)
+    except:
+        return False, False, False
 
-            break
+    captured_url = None
 
-        except:
-                current_times = current_times + 1 
-                if current_times == max_time:
-                    return False, False, False
-                continue
-        
-    with page.expect_response(lambda response: redirect_url in response.url,timeout=50000) as response_info:
+    def on_request(request):
+        nonlocal captured_url
+        if redirect_url in request.url and 'code=' in request.url:
+            captured_url = request.url
 
+    page.on("request", on_request)
+
+    try:
         handle_oauth2_form(page, email)
 
-        response = response_info.value
-        callback_url = response.url
-
-        if 'code=' not in callback_url:
-
-            print("Authorization failed: No code in callback URL")
+        for _ in range(400):
+            page.wait_for_timeout(250)
+            if captured_url:
+                break
+            current_url = page.url
+            if 'chrome-error' in current_url:
+                return False, False, False
+            if 'res=error' in current_url or 'error' in current_url.split('?')[-1]:
+                return False, False, False
+        else:
             return False, False, False
-        auth_code = parse_qs(callback_url.split('?')[1])['code'][0]
 
-    token_data = {
-        'client_id': client_id,
-        'code': auth_code,
-        'redirect_uri': redirect_url,
-        'grant_type': 'authorization_code',
-        'code_verifier': code_verifier,
-        'scope': ' '.join(SCOPES)
-    }
+    finally:
+        page.remove_listener("request", on_request)
 
-    response = requests.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', data=token_data, headers={
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }, proxies=get_proxy())
+    if not captured_url or 'code=' not in captured_url:
+        return False, False, False
+
+    auth_code = parse_qs(captured_url.split('?')[1])['code'][0]
+
+    response = requests.post(
+        'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+        data={
+            'client_id': client_id,
+            'code': auth_code,
+            'redirect_uri': redirect_url,
+            'grant_type': 'authorization_code',
+            'code_verifier': code_verifier,
+            'scope': ' '.join(SCOPES)
+        },
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+        proxies=get_proxy()
+    )
 
     if 'refresh_token' in response.json():
-
         tokens = response.json()
-        token_data = {
-            'refresh_token': tokens['refresh_token'],
-            'access_token': tokens.get('access_token', ''),
-            'expires_at': datetime.now().timestamp() + tokens['expires_in']
-    }
-        refresh_token = token_data['refresh_token']
-        access_token = token_data['access_token']
-        expire_at = token_data['expires_at']
-        return refresh_token, access_token, expire_at
-
-    else:
-
-        return False, False, False
+        return (
+            tokens['refresh_token'],
+            tokens.get('access_token', ''),
+            datetime.now().timestamp() + tokens['expires_in']
+        )
+    return False, False, False
