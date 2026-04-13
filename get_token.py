@@ -63,12 +63,6 @@ def _try_get_access_token(page, email):
 
     authorize_url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{'&'.join(f'{k}={quote(v)}' for k, v in params.items())}"
 
-    try:
-        page.wait_for_timeout(250)
-        page.goto(authorize_url, timeout=30000)
-    except:
-        return False, False, False
-
     captured_url = None
 
     def on_request(request):
@@ -79,17 +73,35 @@ def _try_get_access_token(page, email):
     page.on("request", on_request)
 
     try:
+        try:
+            page.wait_for_timeout(250)
+            page.goto(authorize_url, timeout=30000)
+        except:
+            return False, False, False
+
         handle_oauth2_form(page, email)
 
-        for _ in range(400):
-            page.wait_for_timeout(250)
+        max_refreshes = 1
+        refresh_count = 0
+        refresh_interval = 200 
+
+        for i in range(400):
+            page.wait_for_timeout(100)
             if captured_url:
                 break
+
             current_url = page.url
-            if 'chrome-error' in current_url:
-                return False, False, False
             if 'res=error' in current_url or 'error' in current_url.split('?')[-1]:
                 return False, False, False
+
+            if i > 0 and i % refresh_interval == 0:
+                if refresh_count >= max_refreshes:
+                    return False, False, False
+                refresh_count += 1
+                try:
+                    page.reload(timeout=10000)
+                except:
+                    pass
         else:
             return False, False, False
 
@@ -101,25 +113,29 @@ def _try_get_access_token(page, email):
 
     auth_code = parse_qs(captured_url.split('?')[1])['code'][0]
 
-    response = requests.post(
-        'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-        data={
-            'client_id': client_id,
-            'code': auth_code,
-            'redirect_uri': redirect_url,
-            'grant_type': 'authorization_code',
-            'code_verifier': code_verifier,
-            'scope': ' '.join(SCOPES)
-        },
-        headers={'Content-Type': 'application/x-www-form-urlencoded'},
-        proxies=get_proxy()
-    )
-
-    if 'refresh_token' in response.json():
-        tokens = response.json()
-        return (
-            tokens['refresh_token'],
-            tokens.get('access_token', ''),
-            datetime.now().timestamp() + tokens['expires_in']
+    try:
+        response = requests.post(
+            'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+            data={
+                'client_id': client_id,
+                'code': auth_code,
+                'redirect_uri': redirect_url,
+                'grant_type': 'authorization_code',
+                'code_verifier': code_verifier,
+                'scope': ' '.join(SCOPES)
+            },
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            proxies=get_proxy()
         )
+
+        if 'refresh_token' in response.json():
+            tokens = response.json()
+            return (
+                tokens['refresh_token'],
+                tokens.get('access_token', ''),
+                datetime.now().timestamp() + tokens['expires_in']
+            )
+    except:
+        return False, False, False
+
     return False, False, False
