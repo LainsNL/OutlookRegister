@@ -18,6 +18,7 @@ class BaseBrowserController(ABC):
         self.max_captcha_retries = data['max_captcha_retries']
         self.enable_oauth2 = data["oauth2"]['enable_oauth2']
         self.proxy = data['proxy']
+        self.email_suffix = data['email_suffix']
 
         self.thread_local = threading.local()
         self.cleanup_lock = threading.Lock()
@@ -99,6 +100,10 @@ class BaseBrowserController(ABC):
             return False
 
         try:
+            if self.email_suffix == "@hotmail.com":
+                page.get_by_text("@outlook.com").click(timeout=10000)
+                page.locator(f'[role="option"]:text-is("@hotmail.com")').click()
+
             page.locator('[aria-label="新建电子邮件"]').type(email, delay=0.006 * self.wait_time, timeout=10000)
             page.locator('[data-testid="primaryButton"]').click(timeout=5000)
             page.wait_for_timeout(0.02 * self.wait_time)
@@ -153,8 +158,8 @@ class BaseBrowserController(ABC):
 
         filename = os.path.join(self.results_dir, 'logged_email.txt' if self.enable_oauth2 else 'unlogged_email.txt')
         with open(filename, 'a', encoding='utf-8') as f:
-            f.write(f"{email}@outlook.com: {password}\n")
-        print(f'[Success: Email Registration] - {email}@outlook.com: {password}')
+            f.write(f"{email}{self.email_suffix}: {password}\n")
+        print(f'[Success: Email Registration] - {email}{self.email_suffix}: {password}')
 
         if not self.enable_oauth2:
             return True

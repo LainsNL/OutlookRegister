@@ -25,7 +25,7 @@ def generate_code_challenge(code_verifier):
 
 def handle_oauth2_form(page, email):
     try:
-        page.locator('[name="loginfmt"]').fill(f'{email}@outlook.com', timeout=20000)
+        page.locator('[name="loginfmt"]').fill(email, timeout=20000)
         page.locator('#idSIButton9').click(timeout=7000)
 
         consent_btn = page.locator('[data-testid="appConsentPrimaryButton"]')
@@ -47,7 +47,8 @@ def _try_get_access_token(page, email):
     SCOPES = data['oauth2']['Scopes']
     client_id = data['oauth2']['client_id']
     redirect_url = data['oauth2']['redirect_url']
-
+    _email_suffix = data['email_suffix']
+    
     code_verifier = generate_code_verifier()
     code_challenge = generate_code_challenge(code_verifier)
     params = {
@@ -79,7 +80,7 @@ def _try_get_access_token(page, email):
         except:
             return False, False, False
 
-        handle_oauth2_form(page, email)
+        handle_oauth2_form(page, f"{email}{_email_suffix}")
 
         max_refreshes = 1
         refresh_count = 0

@@ -19,7 +19,7 @@ Outlook 注册机
 1.使用本地代理IP**搭建代理池**，在`config.json`填写你的代理地址。  
 2.在设置中调整并发与最大注册量。  
 3.如果你需要Oauth2，请在`config.json`中修改`"enable_oauth2"`的值为`true`并填写`Scopes`、`client_id`与`redirect_url`。  
-4.安装相关依赖`pip install -r requirements.txt`，如果未安装相关浏览器，使用`playwright install chromium`。  
+4.安装相关依赖`pip install -r requirements.txt`，如果未安装相关浏览器，使用`patchright install chromium`。  
 5.视运行脚本填写或留空`browser_path`。  
 6.`python main.py`。  
 

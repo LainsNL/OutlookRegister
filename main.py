@@ -1,14 +1,16 @@
 import os
 import time
 import json
-from concurrent.futures import ThreadPoolExecutor
 from get_token import get_access_token
+from concurrent.futures import ThreadPoolExecutor
+from utils import random_email, generate_strong_password
 from controllers.patchright_controller import PatchrightController
 from controllers.playwright_controller import PlaywrightController
-from utils import random_email, generate_strong_password 
+
 
 
 # --- 不确定有无帮助 ---
+# 0. 视窗大小
 # 1. CDP 检测：wait_for_timeout --> time.sleep()
 # 2. 使用 launch_persistent_context 
 # 3. 避免短时间访问
@@ -35,8 +37,8 @@ def process_single_flow(controller):
         if token_result[0]:
             refresh_token, access_token, expire_at =  token_result
             with open(os.path.join(os.path.dirname(__file__), 'Results', 'outlook_token.txt'), 'a', encoding='utf-8') as f2:
-                f2.write(f"{email}@outlook.com---{password}---{refresh_token}---{access_token}---{expire_at}\n") 
-            print(f'[Success: TokenAuth] - {email}@outlook.com')
+                f2.write(f"{email}{controller.email_suffix}---{password}---{refresh_token}---{access_token}---{expire_at}\n") 
+            print(f'[Success: TokenAuth] - {email}{controller.email_suffix}')
             return True
         else:
             return False
