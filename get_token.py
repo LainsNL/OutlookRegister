@@ -91,10 +91,6 @@ def _try_get_access_token(page, email):
             if captured_url:
                 break
 
-            current_url = page.url
-            if 'res=error' in current_url or 'error' in current_url.split('?')[-1]:
-                return False, False, False
-
             if i > 0 and i % refresh_interval == 0:
                 if refresh_count >= max_refreshes:
                     return False, False, False
