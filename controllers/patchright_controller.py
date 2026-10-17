@@ -25,7 +25,7 @@ class PatchrightController(BaseBrowserController):
         except Exception as e:
             print(f"启动浏览器失败: {e}")
             return False, False
-        
+
     def handle_captcha(self, page):
 
         frame1 = page.frame_locator('iframe[title="验证质询"]')
@@ -56,11 +56,12 @@ class PatchrightController(BaseBrowserController):
                             captcha_passed = False
                             page.wait_for_timeout(random.randint(500, 1000))
                             break
-                        elif page.get_by_text('让我们来保护你的帐户').count() > 0 or page.locator('#EmailAddress').count() > 0:
+                        elif page.get_by_text('保护你的帐户').count() > 0 or page.locator('[data-testid="primaryButton"]').count() > 0:
                             captcha_passed = True
                             break
                         page.wait_for_timeout(random.randint(375, 425))
                     else:
+                        # 部分会一直加载，不确定是否注册成功
                         if frame2.locator('[aria-label="可访问性挑战"]').count() == 0:
                             captcha_passed = True
 
@@ -68,13 +69,13 @@ class PatchrightController(BaseBrowserController):
                         break
 
                 except Exception:
-                    if page.get_by_text('让我们来保护你的帐户').count() > 0 or page.locator('#EmailAddress').count() > 0:
+                    if page.get_by_text('保护你的帐户').count() > 0 or page.locator('[data-testid="primaryButton"]').count() > 0:
                         break
                     frame1.locator(':has-text("请再试一次"), :has-text("Keep going"), :has-text("a few more tries")').first.wait_for(timeout=15000)
                     continue
 
             except Exception:
-                if page.get_by_text('让我们来保护你的帐户').count() > 0 or page.locator('#EmailAddress').count() > 0:
+                if page.get_by_text('保护你的帐户').count() > 0 or page.locator('[data-testid="primaryButton"]').count() > 0:
                      break
                 return False
         else: 

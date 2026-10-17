@@ -12,15 +12,16 @@ Outlook 注册机
 ### 使用步骤
 
 1. `pip install -r requirements.txt`  
-2. `patchright install chromium`  
-3. 在 `config.json` 中配置代理、并发，并选定一种辅助邮箱方式填写相关内容。  
-4. `python main.py`  
+2. `python -m ruyipage install`（推荐，如果使用 ruyipage）  
+3. `patchright install chromium`（如果使用 patchright）  
+4. 在 `config.json` 中配置代理、并发，并选定一种辅助邮箱方式填写相关内容。  
+5. `python main.py`  
 
 ---
 
 | 配置项 | 说明 |
 | :--- | :--- |
-| **`choose_browser`** | `"patchright"` 或 `"playwright"`，推荐 `"patchright"`。 |
+| **`choose_browser`** | `"patchright"` ， `"playwright"` 或者 `ruyipage` ，最推荐 `"ruyipage"`。 |
 | **`choosed_mail`** | `"moemail"` 或 `"outlookgraph"`。 |
 | **`email_suffix`** | `"@outlook.com"` 或 `"@hotmail.com"`。 |
 | **`bot_protection_wait`** | 单位为秒。 |
@@ -31,6 +32,8 @@ Outlook 注册机
 | **`outlookgraph.client_id`** | 辅助邮箱使用的 client id。 |
 | **`outlookgraph.single_email`** | 单邮箱配置 `{ "email": "...", "refresh_token": "..." }`。 |
 | **`outlookgraph.file.path`** | 数据格式为`账号---密码---refresh_token---access_token---expire_at` |
+| **`ruyipage.browser_path`** | 留空则自动获取 |
+| **`ruyipage.traffic_mode`** | 可留空，或填入 **`"aggressive"` |
 
 ---
 

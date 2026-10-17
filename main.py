@@ -4,6 +4,7 @@ import json
 from get_token import get_access_token
 from concurrent.futures import ThreadPoolExecutor
 from utils import random_email, generate_strong_password
+from controllers.ruyipage_controller import RuyipageController
 from controllers.patchright_controller import PatchrightController
 from controllers.playwright_controller import PlaywrightController
 
@@ -100,8 +101,10 @@ if __name__ == "__main__":
         selected_controller = PatchrightController()
     elif data["choose_browser"] =="playwright":
         selected_controller = PlaywrightController()
+    elif data["choose_browser"] =="ruyipage":
+        selected_controller = RuyipageController()
     else:
-        print("不支持的浏览器类型，填写patchright或者playwright")
+        print("不支持的浏览器类型，填写patchright、playwright或者ruyipage")
   
 
     try:

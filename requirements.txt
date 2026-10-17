@@ -1,4 +1,5 @@
 faker
 requests
+ruyipage
 playwright
 patchright>=1.61.2

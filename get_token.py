@@ -9,6 +9,13 @@ from urllib.request import getproxies
 from urllib.parse import quote, parse_qs
 
 def get_proxy():
+    try:
+        with open('config.json', 'r', encoding='utf-8') as f:
+            cfg_proxy = json.load(f).get('proxy')
+        if cfg_proxy:
+            return {"http": cfg_proxy, "https": cfg_proxy}
+    except Exception:
+        pass
     proxies = getproxies()
     http_proxy = proxies.get('http') or proxies.get('https')
     if http_proxy:
@@ -27,6 +34,18 @@ def handle_oauth2_form(page, email, attempt):
     try:
         page.locator('[name="loginfmt"]').fill(email, timeout=20000)
         page.locator('#idSIButton9').click(timeout=7000)
+        page.wait_for_timeout(5000)
+
+        # RuyiPage 兼容层未适配重定向
+        for _ in range(6 if attempt > 0 else 14):
+            try:
+                if page.locator('[data-testid="appConsentPrimaryButton"]').count() > 0:
+                    break
+            except Exception:
+                pass
+            page.wait_for_timeout(500)
+        else:
+            raise TimeoutError
 
         consent_btn = page.locator('[data-testid="appConsentPrimaryButton"]')
         timeout_val = 2500 if attempt > 0 else 20000

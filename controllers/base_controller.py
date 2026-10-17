@@ -219,8 +219,7 @@ class BaseBrowserController(ABC):
 
             year_input = page.locator('[name="BirthYear"]')
             if year_input.count() > 0:
-                self.smooth_click(page, year_input)
-                year_input.fill(year)
+                self.smooth_type(page, year_input, year)
 
             month_btn = page.locator('[name="BirthMonth"]')
             self.smooth_click(page, month_btn)
@@ -259,7 +258,7 @@ class BaseBrowserController(ABC):
             page.locator('span > [href="https://go.microsoft.com/fwlink/?LinkID=521839"]').wait_for(state='detached', timeout=22000)
             page.wait_for_timeout(400)
 
-            if page.get_by_text('一些异常活动').count() or page.get_by_text('此站点正在维护，暂时无法使用，请稍后重试。').count() > 0:
+            if page.get_by_text('一些异常活动').count() or page.get_by_text('此站点正在维护，暂时无法使用，请稍后重试。').count() or page.get_by_text("请重试。如果仍然不起作用，请稍后再试").count() > 0:
                 print("[Error: IP or browser] - 当前IP注册频率过快。检查IP与是否为指纹浏览器并关闭了无头模式。")
                 return False
 
@@ -287,21 +286,20 @@ class BaseBrowserController(ABC):
             recovery_email = mail_provider.get_email()
             page.recovery_email = recovery_email
 
-            email_input = page.locator('#EmailAddress')
+            self.wait_random_ratio(page, 0.03)
+            next_btn = page.locator('[data-testid="primaryButton"]')
+            self.smooth_click(page, next_btn)
+
+            email_input = page.locator('#floatingLabelInput10')
             self.smooth_type(page, email_input, recovery_email)
 
             self.wait_random_ratio(page, 0.03)
-            next_btn = page.locator('#iNext')
+            next_btn = page.locator('[data-testid="primaryButton"]')
             self.smooth_click(page, next_btn)
 
             verify_code = mail_provider.get_verify_code()
-
-            code_input = page.locator('#iOttText')
+            code_input = page.locator('#codeEntry-0')
             self.smooth_type(page, code_input, verify_code)
-
-            self.wait_random_ratio(page, 0.03)
-            finish_btn = page.locator('#iNext')
-            self.smooth_click(page, finish_btn)
 
         except Exception as e:
             print(f"[Error: Proof Email] - {email}{self.email_suffix}注册成功，但辅助邮箱绑定失败: {e}")
