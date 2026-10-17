@@ -248,11 +248,13 @@ class RuyipageController(BaseBrowserController):
         if isinstance(ele_or_loc, LazyLocator):
             return ele_or_loc.resolve()
         return ele_or_loc
-    
+
+    # 改为 move_to 或 自己编写 actions 可以较大提升注册速度
     def smooth_click(self, page, ele):
         real_ele = self._unwrap_ele(ele)
         page.actions.human_move(real_ele).human_click().perform()
 
+    # 改为 move_to 或 自己编写 actions 可以较大提升注册速度
     def smooth_type(self, page, ele, text):
         real_ele = self._unwrap_ele(ele)
         page.actions.human_move(real_ele).perform()

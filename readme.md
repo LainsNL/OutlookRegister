@@ -25,6 +25,8 @@ Outlook 注册机
 | **`choosed_mail`** | `"moemail"` 或 `"outlookgraph"`。 |
 | **`email_suffix`** | `"@outlook.com"` 或 `"@hotmail.com"`。 |
 | **`bot_protection_wait`** | 单位为秒。 |
+| **`ruyipage.browser_path`** | 留空则自动获取 |
+| **`ruyipage.traffic_mode`** | 可留空，或填入 `"aggressive"` |
 | **`moemail.apikey`** | moemail 的 key。 |
 | **`moemail.base_url`** | moemail api 基础地址。 |
 | **`moemail.suffix`** | 使用的域名，留空则自动获取，逗号分隔多个域名。 |
@@ -32,8 +34,7 @@ Outlook 注册机
 | **`outlookgraph.client_id`** | 辅助邮箱使用的 client id。 |
 | **`outlookgraph.single_email`** | 单邮箱配置 `{ "email": "...", "refresh_token": "..." }`。 |
 | **`outlookgraph.file.path`** | 数据格式为`账号---密码---refresh_token---access_token---expire_at` |
-| **`ruyipage.browser_path`** | 留空则自动获取 |
-| **`ruyipage.traffic_mode`** | 可留空，或填入 **`"aggressive"` |
+
 
 ---
 
