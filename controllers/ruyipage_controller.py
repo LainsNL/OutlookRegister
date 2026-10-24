@@ -314,6 +314,10 @@ class RuyipageController(BaseBrowserController):
             opts.set_pref("browser.ping-centre.telemetry", False)
             opts.set_pref("extensions.pocket.enabled", False)
 
+            if hasattr(opts, "enable_marionette"):
+                opts.enable_marionette(False)
+            opts.set_pref("marionette.port", 0)
+
             if self.traffic_mode == "aggressive":
                 opts.set_pref("permissions.default.image", 2)             # 禁止加载所有图片
                 opts.set_pref("gfx.downloadable_fonts.enabled", False)    # 禁止下载远程 Web 字体

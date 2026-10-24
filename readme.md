@@ -1,7 +1,9 @@
 # OutlookRegister  
 
+简体中文 | [English](./readme_en.md)  
+
 Outlook 注册机  
-选择器经常更新，不保证时效性，自行测试。 
+选择器经常更新，不保证时效性，自行测试。  
 
 - 模拟人类填表操作  
 - 自动过验证码  
