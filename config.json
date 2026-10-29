@@ -4,7 +4,7 @@
     "email_suffix": "@outlook.com",
     "proxy": "http://127.0.0.1:7897",
     "bot_protection_wait": 16,
-    "max_captcha_retries": 3,
+    "max_captcha_retries": 4,
     "concurrent_flows": 3,
     "max_tasks": 5,
     "oauth2": {

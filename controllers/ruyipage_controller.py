@@ -1,11 +1,137 @@
+import os
 import re
 import json
 import time
 import random
+import hashlib
+import requests
+import threading
 from types import SimpleNamespace
 from .base_controller import BaseBrowserController
 from ruyipage import FirefoxOptions, FirefoxPage, resolve_firefox_path
 
+#   流量说明
+#   1. *.mozilla.net / *.mozilla.com (~14.80 MB)                            -> Firefox 证书库及翻译模型
+#   2. res.public.onecdn.static.microsoft (~1.70 MB)                        -> Outlook 落地页与静态资源(出自于同意并继续，使用 EN 时区不会出现)
+#   3. browser.events.data.microsoft.com (~0.07 MB)                         -> 微软前端遥测与埋点上报
+#   4. res-1.cdn.office.net / fonts.googleapis (~0.07 MB)                   -> Office 静态图标与外部字体
+#
+#   5. *.hsprotect.net / *.px-cloud.net / crcldu.com (~0.55 MB)             -> PerimeterX 按压验证码
+#   6. logincdn.msftauth.net / logincdn.msauth.net (~0.54 MB)               -> 注册页核心 JS
+#   7. outlook.live.com / login.live.com / signup.live.com 等 (~0.15 MB)    -> 注册页面 HTML 与表单接口
+
+
+_ONECDN_CACHE = {}
+_ONECDN_FAILED_UNTIL = {}
+_ONECDN_LOCKS = {}
+_ONECDN_GLOBAL_LOCK = threading.Lock()
+_CACHE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Results", ".onecdn_cache"))
+_HTTP_SESS = requests.Session()
+os.makedirs(_CACHE_DIR, exist_ok=True)
+
+
+# 启动时自动清理残留的 .tmp 半截文件及超过 1 天的过期缓存，并预热进内存
+for _fn in os.listdir(_CACHE_DIR):
+    _fp = os.path.join(_CACHE_DIR, _fn)
+    try:
+        if _fn.endswith(".tmp") or (time.time() - os.path.getmtime(_fp) > 1 * 86400):
+            os.remove(_fp)
+        elif _fn.endswith(".json"):
+            with open(_fp, "r", encoding="utf-8") as _f:
+                _d = json.load(_f)
+            if "url" in _d and "ct" in _d and "body" in _d:
+                _ONECDN_CACHE[_d["url"]] = (_d["ct"], _d["body"])
+    except Exception:
+        try:
+            os.remove(_fp)
+        except Exception:
+            pass
+
+def _setup_onecdn_cache(page: FirefoxPage, proxy_url: str):
+    def _handler(req):
+        try:
+            url = getattr(req, "url", "") or ""
+            path_lower = url.split("?", 1)[0].lower()
+
+            # 1. 遥测与字体/Office图标
+            if "browser.events.data.microsoft.com" in url or "fonts.googleapis.com" in url or "fonts.gstatic.com" in url:
+                req.mock(body="", status_code=200, headers={"access-control-allow-origin": "*"})
+                return
+            if "res-1.cdn.office.net" in url:
+                req.fail()
+                return
+
+            # 2. 缓存 Outlook 落地页静态脚本 (也可以使用 en 时区跳过同意并继续的这部分流量)
+            if "res.public.onecdn.static.microsoft" in url or "res.cdn.office.net" in url:
+                if not path_lower.endswith((".js", ".mjs", ".css", ".json")):
+                    req.fail()
+                    return
+
+                if path_lower.endswith((".js", ".mjs", ".css", ".json")):
+                    cached = _ONECDN_CACHE.get(url)
+                    if cached is None and time.time() >= _ONECDN_FAILED_UNTIL.get(url, 0):
+                        with _ONECDN_GLOBAL_LOCK:
+                            lock = _ONECDN_LOCKS.setdefault(url, threading.Lock())
+                        with lock:
+                            cached = _ONECDN_CACHE.get(url)
+                            if cached is None and time.time() >= _ONECDN_FAILED_UNTIL.get(url, 0):
+                                try:
+                                    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+                                    try:
+                                        r = _HTTP_SESS.get(url, proxies=proxies, timeout=4)
+                                    except Exception:
+                                        _HTTP_SESS.close()
+                                        r = requests.get(url, proxies=proxies, timeout=4)
+                                    if r.status_code == 200 and r.content:
+                                        text = r.content.decode("utf-8")
+                                        if text.encode("utf-8") == r.content:
+                                            ct = r.headers.get("Content-Type", "application/javascript; charset=utf-8")
+                                            cached = (ct, text)
+                                            _ONECDN_CACHE[url] = cached
+                                            # 先写 .tmp 再替换正式文件，防止中断损坏
+                                            h_key = hashlib.md5(url.encode("utf-8")).hexdigest()
+                                            tmp_file = os.path.join(_CACHE_DIR, f"{h_key}.{threading.get_ident()}.tmp")
+                                            disk_file = os.path.join(_CACHE_DIR, f"{h_key}.json")
+                                            with open(tmp_file, "w", encoding="utf-8") as f:
+                                                json.dump({"url": url, "ct": ct, "body": text}, f)
+                                            os.replace(tmp_file, disk_file)
+                                except Exception:
+                                    pass
+                                # 下载失败则设置 5 秒冷却期：同批线程直接放行，5 秒后新任务再重试
+                                if cached is None:
+                                    _ONECDN_FAILED_UNTIL[url] = time.time() + 5.0
+
+                    if cached is not None:
+                        ct, body = cached
+                        req.mock(
+                            body=body,
+                            status_code=200,
+                            headers={
+                                "content-type": ct,
+                                "access-control-allow-origin": "*",
+                                "timing-allow-origin": "*",
+                            },
+                        )
+                        return
+
+            req.continue_request()
+        except Exception:
+            pass
+
+    patterns = [
+        {"type": "pattern", "hostname": "res.public.onecdn.static.microsoft"},
+        {"type": "pattern", "hostname": "res.cdn.office.net"},
+        {"type": "pattern", "hostname": "browser.events.data.microsoft.com"},
+        {"type": "pattern", "hostname": "fonts.googleapis.com"},
+        {"type": "pattern", "hostname": "fonts.gstatic.com"},
+        {"type": "pattern", "hostname": "res-1.cdn.office.net"},
+    ]
+    for _ in range(5):
+        try:
+            page.intercept.start_requests(_handler, url_patterns=patterns)
+            break
+        except Exception:
+            time.sleep(0.3)
 
 #  --- 兼容层 ---
 WAIT_MAP = {"domcontentloaded": "interactive", "load": "complete", "commit": "none"}
@@ -266,7 +392,7 @@ class RuyipageController(BaseBrowserController):
         try:
             opts = FirefoxOptions()
             opts.headless(False)
-            opts.private_mode(True)
+            opts.private_mode(False)        # True 可能会导致缓存失效
             opts.close_on_exit(True)
             opts.set_proxy(self.proxy)
             opts.set_window_size(1440, 900)
@@ -274,6 +400,17 @@ class RuyipageController(BaseBrowserController):
             opts.set_pref("intl.locale.requested", "zh-CN")
             opts.set_pref("intl.accept_languages", "zh-CN, zh, en-US, en")
             opts.set_browser_path(self.browser_path)
+
+            # 禁止下载证书库及翻译模型 ~ 14.8 MB
+            os.environ["MOZ_REMOTE_SETTINGS_DEVTOOLS"] = "1"
+            opts.set_pref("services.settings.server", "http://127.0.0.1:1/v1")
+            opts.set_pref("browser.translations.enable", False)
+            opts.set_pref("browser.safebrowsing.provider.google4.updateURL", "")
+
+            # 启动为空白页，防止启动时停留在about:welcome 导致 BiDi 拦截器挂载失败
+            opts.set_pref("browser.startup.page", 0)
+            opts.set_pref("browser.startup.homepage", "about:blank")
+            opts.set_pref("browser.aboutwelcome.enabled", False)
 
             opts.set_pref("browser.cache.disk.enable", True)
             opts.set_pref("browser.cache.memory.enable", True)
@@ -325,6 +462,8 @@ class RuyipageController(BaseBrowserController):
                 opts.set_pref("media.peerconnection.enabled", False)
 
             page = FirefoxPage(opts)
+            if self.traffic_mode == "aggressive":
+                _setup_onecdn_cache(page, self.proxy)
             return opts, page
 
         except Exception as e:
