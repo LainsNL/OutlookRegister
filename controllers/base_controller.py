@@ -171,6 +171,7 @@ class BaseBrowserController(ABC):
         通用逻辑:注册邮箱
         """
 
+        # 也许改为走 EN 时区可能会更好
         self.reset_last_pos()
         fake = Faker()
 
@@ -290,7 +291,8 @@ class BaseBrowserController(ABC):
             next_btn = page.locator('[data-testid="primaryButton"]')
             self.smooth_click(page, next_btn)
 
-            email_input = page.locator('#floatingLabelInput10')
+            # floatingLabelInput %d
+            email_input = page.locator('input.fui-Input__input[id^="floatingLabelInput"]')
             self.smooth_type(page, email_input, recovery_email)
 
             self.wait_random_ratio(page, 0.03)

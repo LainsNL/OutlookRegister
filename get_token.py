@@ -36,20 +36,10 @@ def handle_oauth2_form(page, email, attempt):
         page.locator('#idSIButton9').click(timeout=7000)
         page.wait_for_timeout(5000)
 
-        # RuyiPage 兼容层未适配重定向
-        for _ in range(6 if attempt > 0 else 14):
-            try:
-                if page.locator('[data-testid="appConsentPrimaryButton"]').count() > 0:
-                    break
-            except Exception:
-                pass
-            page.wait_for_timeout(500)
-        else:
-            raise TimeoutError
-
         consent_btn = page.locator('[data-testid="appConsentPrimaryButton"]')
         timeout_val = 2500 if attempt > 0 else 20000
         consent_btn.wait_for(state='visible', timeout=timeout_val)
+        page.wait_for_timeout(800)  # 简单兼容 RuyiPage 等待按钮从右向左滑入动画结束，按钮坐标稳定后再点击
         consent_btn.click(timeout=10000)
     except:
         pass

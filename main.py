@@ -102,10 +102,9 @@ if __name__ == "__main__":
     elif data["choose_browser"] =="playwright":
         selected_controller = PlaywrightController()
     elif data["choose_browser"] =="ruyipage":
-        selected_controller = RuyipageController()
+        selected_controller = RuyipageController()   # 成功注册 + Oauth2(~2 ~ 3 MB)
     else:
         print("不支持的浏览器类型，填写patchright、playwright或者ruyipage")
-  
 
     try:
         run_concurrent_flows(selected_controller, concurrent_flows, max_tasks)

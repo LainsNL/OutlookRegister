@@ -24,7 +24,7 @@ Outlook 注册机
 | 配置项 | 说明 |
 | :--- | :--- |
 | **`choose_browser`** | `"patchright"` ， `"playwright"` 或者 `ruyipage` ，最推荐 `"ruyipage"`。 |
-| **`choosed_mail`** | `"moemail"` 或 `"outlookgraph"`。 |
+| **`choosed_mail`** | `"moemail"` 或 `"outlookgraph"`。（不想绑定辅助邮箱见补充说明 6） |
 | **`email_suffix`** | `"@outlook.com"` 或 `"@hotmail.com"`。 |
 | **`bot_protection_wait`** | 单位为秒。 |
 | **`ruyipage.browser_path`** | 留空则自动获取 |
@@ -47,3 +47,4 @@ Outlook 注册机
 3. `client_id`与`redirect_url`格式通常类似于`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`和`http://localhost:8000`。  
 4. 使用本地代理IP搭建代理池，在`config.json`填写你的代理地址。IP与成功率高度相关，同一IP短时间不宜多次注册。  
 5. 邮箱自动存储到工作目录的`Results`下。  
+6. 如果不绑定辅助邮箱，直接访问 `https://outlook.live.com/mail/0` 也可进入邮箱页面，请自行修改相关逻辑让其后续走 Oauth2。  

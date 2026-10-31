@@ -26,7 +26,7 @@ Selectors may change frequently; timeliness is not guaranteed—please test on y
 | Key | Description |
 | :--- | :--- |
 | **`choose_browser`** | `"patchright"`, `"playwright"`, or `"ruyipage"`. `"ruyipage"` is recommended. |
-| **`choosed_mail`** | `"moemail"` or `"outlookgraph"`. |
+| **`choosed_mail`** | `"moemail"` or `"outlookgraph"`. (see Note 6 if you do not want to bind a recovery email). ||
 | **`email_suffix`** | `"@outlook.com"` or `"@hotmail.com"`. |
 | **`bot_protection_wait`** | Wait time in seconds before submitting registration. |
 | **`ruyipage.browser_path`** | Leave empty to resolve automatically. |
@@ -48,3 +48,4 @@ Selectors may change frequently; timeliness is not guaranteed—please test on y
 3. `client_id` and `redirect_url` typically look like `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` and `http://localhost:8000`.  
 4. Set up a local proxy pool and fill in your proxy address in `config.json`. IP quality is critical to success rates—avoid registering multiple accounts from the same IP within a short period.  
 5. Registered accounts are saved automatically in the `Results` folder.  
+6. If you do not bind a recovery email, navigating directly to `https://outlook.live.com/mail/0` will also enter the mailbox. Please modify the logic yourself to proceed with OAuth2 afterwards.  

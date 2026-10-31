@@ -16,9 +16,12 @@ from ruyipage import FirefoxOptions, FirefoxPage, resolve_firefox_path
 #   3. browser.events.data.microsoft.com (~0.07 MB)                         -> 微软前端遥测与埋点上报
 #   4. res-1.cdn.office.net / fonts.googleapis (~0.07 MB)                   -> Office 静态图标与外部字体
 #
-#   5. *.hsprotect.net / *.px-cloud.net / crcldu.com (~0.55 MB)             -> PerimeterX 按压验证码
+#   部分流量可以进一步分流或者尝试走协议
+#   5. *.hsprotect.net / *.px-cloud.net / crcldu.com (~0.55 ~ 0.95 MB)      -> PerimeterX 按压验证码（视按压次数浮动）
 #   6. logincdn.msftauth.net / logincdn.msauth.net (~0.54 MB)               -> 注册页核心 JS
 #   7. outlook.live.com / login.live.com / signup.live.com 等 (~0.15 MB)    -> 注册页面 HTML 与表单接口
+#   8. aadcdn.msauth.net / account.live.com / graph (~1.00 MB)              -> 辅助邮箱(~0.11M) + 进收件箱(~0.35M) + OAuth2(~0.54M)
+
 
 
 _ONECDN_CACHE = {}
@@ -30,11 +33,11 @@ _HTTP_SESS = requests.Session()
 os.makedirs(_CACHE_DIR, exist_ok=True)
 
 
-# 启动时自动清理残留的 .tmp 半截文件及超过 1 天的过期缓存，并预热进内存
+# 启动时自动清理残留的 .tmp 半截文件及超过 14 天的过期缓存，并预热进内存
 for _fn in os.listdir(_CACHE_DIR):
     _fp = os.path.join(_CACHE_DIR, _fn)
     try:
-        if _fn.endswith(".tmp") or (time.time() - os.path.getmtime(_fp) > 1 * 86400):
+        if _fn.endswith(".tmp") or (time.time() - os.path.getmtime(_fp) > 14 * 86400):
             os.remove(_fp)
         elif _fn.endswith(".json"):
             with open(_fp, "r", encoding="utf-8") as _f:
@@ -54,7 +57,14 @@ def _setup_onecdn_cache(page: FirefoxPage, proxy_url: str):
             path_lower = url.split("?", 1)[0].lower()
 
             # 1. 遥测与字体/Office图标
-            if "browser.events.data.microsoft.com" in url or "fonts.googleapis.com" in url or "fonts.gstatic.com" in url:
+            if any(x in url for x in (
+                "events.data.microsoft.com",
+                "fonts.googleapis.com",
+                "fonts.gstatic.com",
+                "update.googleapis.com",
+                "dl.google.com",
+                "gvt1.com",
+            )):
                 req.mock(body="", status_code=200, headers={"access-control-allow-origin": "*"})
                 return
             if "res-1.cdn.office.net" in url:
@@ -78,10 +88,10 @@ def _setup_onecdn_cache(page: FirefoxPage, proxy_url: str):
                                 try:
                                     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
                                     try:
-                                        r = _HTTP_SESS.get(url, proxies=proxies, timeout=4)
+                                        r = _HTTP_SESS.get(url, proxies=proxies, timeout=(4, 15))
                                     except Exception:
                                         _HTTP_SESS.close()
-                                        r = requests.get(url, proxies=proxies, timeout=4)
+                                        r = requests.get(url, proxies=proxies, timeout=(4, 15))
                                     if r.status_code == 200 and r.content:
                                         text = r.content.decode("utf-8")
                                         if text.encode("utf-8") == r.content:
@@ -119,13 +129,15 @@ def _setup_onecdn_cache(page: FirefoxPage, proxy_url: str):
             pass
 
     patterns = [
-        {"type": "pattern", "hostname": "res.public.onecdn.static.microsoft"},
-        {"type": "pattern", "hostname": "res.cdn.office.net"},
-        {"type": "pattern", "hostname": "browser.events.data.microsoft.com"},
-        {"type": "pattern", "hostname": "fonts.googleapis.com"},
-        {"type": "pattern", "hostname": "fonts.gstatic.com"},
-        {"type": "pattern", "hostname": "res-1.cdn.office.net"},
-    ]
+            {"type": "pattern", "hostname": "res.public.onecdn.static.microsoft"},
+            {"type": "pattern", "hostname": "res.cdn.office.net"},
+            {"type": "pattern", "hostname": "browser.events.data.microsoft.com"},
+            {"type": "pattern", "hostname": "eu-office.events.data.microsoft.com"},  # <-- 新增：收件箱遥测
+            {"type": "pattern", "hostname": "update.googleapis.com"},                # <-- 新增：后台更新杂音
+            {"type": "pattern", "hostname": "fonts.googleapis.com"},
+            {"type": "pattern", "hostname": "fonts.gstatic.com"},
+            {"type": "pattern", "hostname": "res-1.cdn.office.net"},
+        ]
     for _ in range(5):
         try:
             page.intercept.start_requests(_handler, url_patterns=patterns)
@@ -244,6 +256,7 @@ class LazyLocator:
         return self
 
     def click(self, timeout=None):
+        # 注意：human_move 会在轨迹规划起点读取一次坐标，未兼容 Playwright 的动画静止检测 --> get_token 中按钮滑入动画 （可考虑等元素可见且连续两次采样 rect 坐标不再变化）
         ele = self.resolve(timeout=timeout)
         self.page.actions.human_move(ele).human_click().perform()
         return self
